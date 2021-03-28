@@ -42,25 +42,33 @@ class EvaluateBase:
 
     @property
     def TP(self):
-        '''真阳性'''
+        '''真阳性
+        将正类预测为正类
+        '''
         _tp = self._true & self._positive
         return sum(_tp)
 
     @property
-    def FP(self):
-        '''伪阳性'''
-        _fp = self._false & self._positive
-        return sum(_fp)
-
-    @property
     def FN(self):
-        '''伪阴性'''
+        '''伪阴性
+        将正类预测为负类
+        '''
         _fn = self._true & self._negative
         return sum(_fn)
 
     @property
+    def FP(self):
+        '''伪阳性
+        将负类预测为正类
+        '''
+        _fp = self._false & self._positive
+        return sum(_fp)
+
+    @property
     def TN(self):
-        '''真阴性'''
+        '''真阴性
+        将负类预测为负类
+        '''
         _tn = self._false & self._negative
         return sum(_tn)
 
