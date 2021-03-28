@@ -49,24 +49,24 @@ class EvaluateBase:
     @property
     def FP(self):
         '''伪阳性'''
-        _fp = self._false & self._negative
+        _fp = self._false & self._positive
         return sum(_fp)
 
     @property
     def FN(self):
         '''伪阴性'''
-        _fn = self._false & self._positive
+        _fn = self._true & self._negative
         return sum(_fn)
 
     @property
     def TN(self):
         '''真阴性'''
-        _tn = self._true & self._negative
+        _tn = self._false & self._negative
         return sum(_tn)
 
     @property
     def confusion_matrix(self):
-        cm = np.array([[self.TP, self.FP], [self.FN, self.TN]])
+        cm = np.array([[self.TP, self.FN], [self.FP, self.TN]])
         return cm
 
 
