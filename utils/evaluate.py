@@ -74,7 +74,8 @@ class EvaluateBase:
 
     @property
     def confusion_matrix(self):
-        cm = np.array([[self.TP, self.FN], [self.FP, self.TN]])
+        cm = np.array([[self.TP, self.FN],
+                       [self.FP, self.TN]])
         return cm
 
 
