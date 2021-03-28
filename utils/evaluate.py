@@ -49,13 +49,13 @@ class EvaluateBase:
     @property
     def FP(self):
         '''伪阳性'''
-        _fp = self._false & self._positive
+        _fp = self._false & self._negative
         return sum(_fp)
 
     @property
     def FN(self):
         '''伪阴性'''
-        _fn = self._false & self._negative
+        _fn = self._false & self._positive
         return sum(_fn)
 
     @property
