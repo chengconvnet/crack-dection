@@ -9,7 +9,7 @@ from tensorflow.keras import models
 def mkdir(out_dir):
     out_dir = Path(out_dir)
     if not out_dir.exists():
-        out_dir.mkdir()
+        out_dir.mkdir(parents=True, exist_ok=True)
 
 
 class Size:
@@ -36,6 +36,28 @@ class PaddingImage:
         im = Image.open(filename)
         W, H = Size.resize(*im.size, *sliding_size)
         origin_im = Image.new('RGB', (W, H))
+        # 镜像缺失的部分
+        w, h = im.size
+        w_ = W - w
+        h_ = H - h
+        _w = w - w_  # 即 w - (W- w)
+        _h = h - h_  # 即 h - (H - h)
+
+        right_bbox = [_w, 0, w, h]
+        bottom_bbox = [0, _h, w, h]
+        last_bbox = [_w, _h, w, h]
+
+        right = im.crop(right_bbox).transpose(Image.FLIP_LEFT_RIGHT)
+        bottom = im.crop(bottom_bbox).transpose(Image.FLIP_TOP_BOTTOM)
+        last = im.crop(last_bbox)
+
+        right_bbox = [w, 0, W, h]
+        bottom_bbox = [0, h, w, H]
+        last_bbox = [w, h, W, H]
+
+        origin_im.paste(right, right_bbox)
+        origin_im.paste(bottom, bottom_bbox)
+        origin_im.paste(last, last_bbox)
         origin_im.paste(im)
         return origin_im
 
@@ -108,16 +130,10 @@ class SlidingWindow:
 
 
 class SlidingModel:
-    def __init__(self, tune_model_dir, model_name):
+    def __init__(self, model):
         '''二分类滑窗模型
         '''
-        self._tune_model_dir = tune_model_dir
-        self.model_name = model_name
-
-    @property
-    def model(self):
-        name = f'{self._tune_model_dir}/{self.model_name}.h5'
-        return models.load_model(name)
+        self.model = model
 
     def window(self, filename, sliding_size):
         return SlidingWindow(filename, sliding_size)
@@ -133,9 +149,9 @@ class SlidingModel:
         # scores = self.scores(ys)
         return np.argwhere(scores > alpha)
 
-    def mkdir_save_dir(self, save_dir, mask_dir):
+    def mkdir_save_dir(self, save_dir, mask_dir, model_name):
         mkdir(save_dir)
-        save_dir = f"{save_dir}/{self.model_name}"
+        save_dir = f"{save_dir}/{model_name}"
         mkdir(save_dir)
         return save_dir
 
@@ -153,8 +169,8 @@ class SlidingModel:
 
 
 class CrackModel(SlidingModel):
-    def __init__(self, tune_model_dir, model_name):
-        super().__init__(tune_model_dir, model_name)
+    def __init__(self, model):
+        super().__init__(model)
 
     def predict(self, window, row, column):
         '''预测单张图片
@@ -186,12 +202,14 @@ class CrackModel(SlidingModel):
         self.save_result(crack_names, 'crack.csv', out_dir)
         self.save_result(non_crack_names, 'noncrack.csv', out_dir)
 
-    def run(self, alpha, beta, batch_size, sliding_size, data_dir, save_root):
+    def run(self, alpha, beta, batch_size,
+            sliding_size, data_dir,
+            save_root, model_name):
         crack_names = []
         non_crack_names = []
         for filename in Path(data_dir).iterdir():
             mask_dir = self.mask_dir(filename)
-            save_dir = self.mkdir_save_dir(save_root, mask_dir)
+            save_dir = self.mkdir_save_dir(save_root, mask_dir, model_name)
             window = self.window(filename, sliding_size)
             ys = self(window, batch_size)
             class_name = self.get_class_name(ys, alpha)
@@ -210,4 +228,3 @@ class CrackModel(SlidingModel):
                 non_crack_names.append(mask_name)
             window.save(save_dir)
         self.write(save_dir, crack_names, non_crack_names)
-
