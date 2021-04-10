@@ -1,6 +1,10 @@
 from tensorflow.keras.layers import Dense, Flatten, GlobalAvgPool2D
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras.applications import ResNet152
+import tensorflow as tf
+
+
+tf.debugging.set_log_device_placement(True)
 
 
 class ModelA(Model):
@@ -11,7 +15,9 @@ class ModelA(Model):
         # 冻结基网络
         self.base.trainable = False  # 凍結權重
         self.net = Sequential()
-        for layer in [GlobalAvgPool2D(), Dense(512, activation='relu'), Dense(1, activation='sigmoid')]:
+        for layer in [GlobalAvgPool2D(),
+                      Dense(512, activation='relu'),
+                      Dense(2)]:
             self.net.add(layer)
 
     def call(self, inputs):
@@ -28,7 +34,7 @@ class ModelB(Model):
         # 冻结基网络
         self.base.trainable = False  # 凍結權重
         self.net = Sequential()
-        for layer in [Flatten(), Dense(512, activation='relu'), Dense(1, activation='sigmoid')]:
+        for layer in [Flatten(), Dense(512, activation='relu'), Dense(2)]:
             self.net.add(layer)
 
     def call(self, inputs):
@@ -52,7 +58,7 @@ class ModelC(Model):
                 layer.trainable = False  # 其他凍結權重
 
         self.net = Sequential()
-        for layer in [Flatten(), Dense(512, activation='relu'), Dense(1, activation='sigmoid')]:
+        for layer in [Flatten(), Dense(512, activation='relu'), Dense(2)]:
             self.net.add(layer)
 
     def call(self, inputs):
@@ -61,13 +67,8 @@ class ModelC(Model):
         return xs
 
 
-def set_resnet(model_class, optimizer,
-               loss='binary_crossentropy',
-               metrics=['accuracy']):
+def set_resnet(model_class):
     # 建立基网络
     base = ResNet152(include_top=False, weights='imagenet')
     net = model_class(base)
-    net.compile(loss=loss,
-                optimizer=optimizer,
-                metrics=metrics)
     return net
