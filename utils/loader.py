@@ -1,41 +1,45 @@
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from pathlib import Path
 
-from tensorflow.keras.applications.imagenet_utils import preprocess_input
+import tensorflow as tf
+from tensorflow.data import Dataset
 
 
-def load_data(train_data_dir,
-              validation_data_dir,
-              test_data_dir,
-              batch_size,
-              target_size=(224, 224),
-              class_mode='binary'):
+def preprocess_image(image, width=224, height=224):
+    image = tf.image.decode_jpeg(image, channels=3)
+    image = tf.image.resize(image, [width, height])
+    image /= 255.0  # normalize to [0,1] range
+    return image
 
-    train_datagen = ImageDataGenerator(
-        preprocessing_function=preprocess_input,
-        shear_range=0.2,
-        zoom_range=0.2,
-        horizontal_flip=True)
 
-    validation_datagen = ImageDataGenerator(
-        preprocessing_function=preprocess_input)
+def load_and_preprocess_image(path):
+    image = tf.io.read_file(path)
+    return preprocess_image(image)
 
-    test_datagen = ImageDataGenerator(preprocessing_function=preprocess_input)
 
-    train_generator = train_datagen.flow_from_directory(train_data_dir,
-                                                        target_size=target_size,
-                                                        batch_size=batch_size,
-                                                        class_mode=class_mode)
+class Bunch:
+    def __init__(self, dirname):
+        self.root = Path(dirname)
 
-    validation_generator = validation_datagen.flow_from_directory(validation_data_dir,
-                                                                  shuffle=False,
-                                                                  target_size=target_size,
-                                                                  batch_size=batch_size,
-                                                                  class_mode=class_mode)
+    @property
+    def class_names(self):
+        return {file.name: k
+                for k, file in enumerate(self.root.iterdir())}
 
-    test_generator = test_datagen.flow_from_directory(test_data_dir,
-                                                      target_size=target_size,
-                                                      batch_size=batch_size,
-                                                      interpolation='bicubic',
-                                                      class_mode=class_mode,
-                                                      shuffle=False)
-    return train_generator, validation_generator, test_generator
+    def __call__(self, match='*.jpg'):
+        return {file.as_posix(): self.class_names[file.parent.name]
+                for file in self.root.rglob(match)}
+
+
+class PathDataset:
+    def __init__(self, data_dir, match='*.jpg'):
+        self.bunch = Bunch(data_dir)
+        self.paths = Dataset.from_tensor_slices(list(self.bunch(match).keys()))
+        self.labels = Dataset.from_tensor_slices(
+            list(self.bunch(match).values()))
+
+    @property
+    def images(self):
+        return self.paths.map(load_and_preprocess_image)
+
+    def __call__(self):
+        return Dataset.zip((self.images, self.labels))
