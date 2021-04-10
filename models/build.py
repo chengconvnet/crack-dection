@@ -1,42 +1,73 @@
-from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.layers import Flatten, Dense, GlobalAveragePooling2D
+from tensorflow.keras.layers import Dense, Flatten, GlobalAvgPool2D
+from tensorflow.keras import Model, Sequential
+from tensorflow.keras.applications import ResNet152
 
 
-def create_modelA(base_model):
-    x = base_model.output
-    x = GlobalAveragePooling2D()(x)
-    x = Dense(512, activation='relu')(x)
-    prediction = Dense(1, activation='sigmoid')(x)
+class ModelA(Model):
+    def __init__(self, base):
+        super().__init__()
+        # self.base = ResNet152(include_top=False, weights='imagenet')
+        self.base = base
+        # 冻结基网络
+        self.base.trainable = False  # 凍結權重
+        self.net = Sequential()
+        for layer in [GlobalAvgPool2D(), Dense(512, activation='relu'), Dense(1, activation='sigmoid')]:
+            self.net.add(layer)
 
-    model = Model(inputs=base_model.inputs,
-                  outputs=prediction)
-    for layer in base_model.layers:
-        layer.trainable = False
-    return model
-
-
-def create_modelB(base_model):
-    # ---- 建立分類模型 ---- #
-    model = Sequential()
-    model.add(base_model)    # 將模型做為一層
-    model.add(Flatten())
-    model.add(Dense(512, activation='relu'))
-    # model.add(Dropout(0.5))  # 丟棄法
-    model.add(Dense(1, activation='sigmoid'))
-    #for layer in base_model.layers:
-    #layer.trainable = False
-    base_model.trainable = False     # 凍結權重
-    return model
+    def call(self, inputs):
+        xs = self.base(inputs)
+        xs = self.net(xs)
+        return xs
 
 
-def create_modelC(base_model):
-    # ---- 建立分類模型 ---- #
-    model = Sequential()
-    model.add(base_model)    # 將模型做為一層
-    model.add(Flatten())
-    model.add(Dense(512, activation='relu'))
-    # model.add(Dropout(0.5))  # 丟棄法
-    model.add(Dense(1, activation='sigmoid'))
-    #for layer in base_model.layers:
-    #layer.trainable = False
-    return model
+class ModelB(Model):
+    def __init__(self, base):
+        super().__init__()
+        # self.base = ResNet152(include_top=False, weights='imagenet')
+        self.base = base
+        # 冻结基网络
+        self.base.trainable = False  # 凍結權重
+        self.net = Sequential()
+        for layer in [Flatten(), Dense(512, activation='relu'), Dense(1, activation='sigmoid')]:
+            self.net.add(layer)
+
+    def call(self, inputs):
+        xs = self.base(inputs)
+        xs = self.net(xs)
+        return xs
+
+
+class ModelC(Model):
+    def __init__(self, base):
+        super().__init__()
+        # self.base = ResNet152(include_top=False, weights='imagenet')
+        self.base = base
+        # 解凍有節點層
+        unfreeze = ['conv5_block3_1_conv', 'conv5_block3_1_bn', 'conv5_block3_2_conv',
+                    'conv5_block3_2_bn', 'conv5_block3_3_conv', 'conv5_block3_3_bn']
+        for layer in self.base.layers:
+            if layer.name in unfreeze:
+                layer.trainable = True  # 解凍
+            else:
+                layer.trainable = False  # 其他凍結權重
+
+        self.net = Sequential()
+        for layer in [Flatten(), Dense(512, activation='relu'), Dense(1, activation='sigmoid')]:
+            self.net.add(layer)
+
+    def call(self, inputs):
+        xs = self.base(inputs)
+        xs = self.net(xs)
+        return xs
+
+
+def set_resnet(model_class, optimizer,
+               loss='binary_crossentropy',
+               metrics=['accuracy']):
+    # 建立基网络
+    base = ResNet152(include_top=False, weights='imagenet')
+    net = model_class(base)
+    net.compile(loss=loss,
+                optimizer=optimizer,
+                metrics=metrics)
+    return net
