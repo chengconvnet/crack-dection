@@ -98,12 +98,12 @@ class SlidingWindow:
         X, Y = np.mgrid[0:self.width, 0:self.height]
         return X, Y
 
-    def labels(self, predict_ys):
+    def labels(self, indices):
         '''转换到原图的 patch 得分
         :param width: window 的宽度
         :param height: window 的高度
         '''
-        return predict_ys.reshape(self.width, self.height)
+        return indices.reshape(self.width, self.height)
 
     def __iter__(self):
         for n_w in np.arange(self.width):
@@ -215,7 +215,7 @@ class CrackModel(SlidingModel):
             mask_name = filename.as_posix()
             if class_name == 'crack':
                 crack_names.append(mask_name)
-                labels = window.labels(ys)
+                labels = window.labels(indices)
                 crack_indexes = np.argwhere(labels == 1)
                 for index in crack_indexes:
                     mask_path = self.mask_path(index, save_dir, mask_dir)
