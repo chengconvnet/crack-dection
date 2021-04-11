@@ -141,7 +141,7 @@ class SlidingModel:
     def __call__(self, window, batch_size=32):
         '''获取预测标签'''
         xs = tf.data.Dataset.from_tensor_slices([x for x in window])
-        ys = self.model.call(xs, batch_size=batch_size)
+        ys = self.model.predict(xs, batch_size=batch_size)
         return ys
 
     def positive_indexes(self, scores, alpha):
@@ -178,12 +178,12 @@ class CrackModel(SlidingModel):
         x = window.crop(row, column)
         x = np.expand_dims(x, 0)
         # x = tf.constant(x)
-        y = self.model.call(x)
-        return y
+        y = self.model.predict(x)
+        return y.argmax(axis=1)
 
     def get_class_name(self, ys, alpha=0.8):
         '''alpha 表示最大概率'''
-        n_positive = sum(ys > alpha)
+        n_positive = sum(ys) > alpha
         class_name = 'crack' if n_positive >= 2 else 'noncrack'
         return class_name
 
