@@ -98,7 +98,7 @@ class SlidingWindow:
         X, Y = np.mgrid[0:self.width, 0:self.height]
         return X, Y
 
-    def scores(self, predict_ys):
+    def labels(self, predict_ys):
         '''转换到原图的 patch 得分
         :param width: window 的宽度
         :param height: window 的高度
@@ -138,16 +138,20 @@ class SlidingModel:
     def window(self, filename, sliding_size):
         return SlidingWindow(filename, sliding_size)
 
+    def predict(self, window, row, column):
+        '''预测单张图片
+        '''
+        x = window.crop(row, column)
+        x = np.expand_dims(x, 0)
+        # x = tf.constant(x)
+        y = self.model.predict(x)
+        return y
+
     def __call__(self, window, batch_size=32):
         '''获取预测标签'''
         xs = tf.data.Dataset.from_tensor_slices([x for x in window])
         ys = self.model.predict(xs, batch_size=batch_size)
         return ys
-
-    def positive_indexes(self, scores, alpha):
-        '''获取正样本索引'''
-        # scores = self.scores(ys)
-        return np.argwhere(scores > alpha)
 
     def mkdir_save_dir(self, save_dir, mask_dir, model_name):
         mkdir(save_dir)
@@ -172,18 +176,12 @@ class CrackModel(SlidingModel):
     def __init__(self, model):
         super().__init__(model)
 
-    def predict(self, window, row, column):
-        '''预测单张图片
-        '''
-        x = window.crop(row, column)
-        x = np.expand_dims(x, 0)
-        # x = tf.constant(x)
-        y = self.model.predict(x)
-        return y.argmax(axis=1)
+    def get_indices(self, ys):
+        inds = tf.nn.top_k(ys, k=1).indices
+        return np.squeeze(inds)
 
-    def get_class_name(self, ys, alpha=0.8):
-        '''alpha 表示最大概率'''
-        n_positive = sum(ys) > alpha
+    def get_class_name(self, indices):
+        n_positive = int(sum(indices))
         class_name = 'crack' if n_positive >= 2 else 'noncrack'
         return class_name
 
@@ -202,7 +200,7 @@ class CrackModel(SlidingModel):
         self.save_result(crack_names, 'crack.csv', out_dir)
         self.save_result(non_crack_names, 'noncrack.csv', out_dir)
 
-    def run(self, alpha, beta, batch_size,
+    def run(self, beta, batch_size,
             sliding_size, data_dir,
             save_root, model_name):
         crack_names = []
@@ -212,12 +210,13 @@ class CrackModel(SlidingModel):
             save_dir = self.mkdir_save_dir(save_root, mask_dir, model_name)
             window = self.window(filename, sliding_size)
             ys = self(window, batch_size)
-            class_name = self.get_class_name(ys, alpha)
+            indices = self.get_indices(ys)
+            class_name = self.get_class_name(indices)
             mask_name = filename.as_posix()
             if class_name == 'crack':
                 crack_names.append(mask_name)
-                scores = window.scores(ys)
-                crack_indexes = self.positive_indexes(scores, alpha)
+                labels = window.labels(ys)
+                crack_indexes = np.argwhere(labels == 1)
                 for index in crack_indexes:
                     mask_path = self.mask_path(index, save_dir, mask_dir)
                     patch = window.crop(*index)
