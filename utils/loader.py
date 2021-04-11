@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow.data import Dataset
 
 
+@tf.function
 def preprocess_image(image, width=224, height=224):
     image = tf.image.decode_jpeg(image, channels=3)
     image = tf.image.resize(image, [width, height])
@@ -11,6 +12,7 @@ def preprocess_image(image, width=224, height=224):
     return image
 
 
+@tf.function
 def load_and_preprocess_image(path):
     image = tf.io.read_file(path)
     return preprocess_image(image)
@@ -46,7 +48,7 @@ class PathDataset:
         return Dataset.zip((self.images, self.labels))
 
     def __len__(self):
-        return len(self.paths)
+        return tf.data.Dataset.cardinality(self.paths)
 
     def __call__(self, batch_size, shuffle=False):
         # 设置一个和数据集大小一致的 shuffle buffer size（随机缓冲区大小）以保证数据

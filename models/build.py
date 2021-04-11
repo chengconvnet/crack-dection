@@ -14,11 +14,9 @@ class ModelA(Model):
         self.base = base
         # 冻结基网络
         self.base.trainable = False  # 凍結權重
-        self.net = Sequential()
-        for layer in [GlobalAvgPool2D(),
-                      Dense(512, activation='relu'),
-                      Dense(2)]:
-            self.net.add(layer)
+        self.net = Sequential([GlobalAvgPool2D(),
+                               Dense(512, activation='relu'),
+                               Dense(2)])
 
     @tf.function
     def call(self, inputs):
@@ -34,9 +32,9 @@ class ModelB(Model):
         self.base = base
         # 冻结基网络
         self.base.trainable = False  # 凍結權重
-        self.net = Sequential()
-        for layer in [Flatten(), Dense(512, activation='relu'), Dense(2)]:
-            self.net.add(layer)
+        self.net = Sequential([Flatten(),
+                               Dense(512, activation='relu'),
+                               Dense(2)])
 
     @tf.function
     def call(self, inputs):
@@ -59,9 +57,9 @@ class ModelC(Model):
             else:
                 layer.trainable = False  # 其他凍結權重
 
-        self.net = Sequential()
-        for layer in [Flatten(), Dense(512, activation='relu'), Dense(2)]:
-            self.net.add(layer)
+        self.net = Sequential([Flatten(),
+                               Dense(512, activation='relu'),
+                               Dense(2)])
 
     @tf.function
     def call(self, inputs):
@@ -70,7 +68,6 @@ class ModelC(Model):
         return xs
 
 
-@tf.function
 def set_resnet(model_class):
     # 建立基网络
     base = ResNet152(include_top=False, weights='imagenet')

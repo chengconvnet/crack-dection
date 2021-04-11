@@ -1,3 +1,5 @@
+# 废弃
+
 from matplotlib import pyplot as plt
 import pandas as pd
 from tensorflow.keras.callbacks import ModelCheckpoint
@@ -22,6 +24,7 @@ def model_fit_save(model_name, model, model_save_dir, *args):
     history = create_history(save_path_mode, model, *args)
     return history
 
+
 def history_frame(history):
     '''history 转换为 pd.DataFrame
     '''
@@ -34,4 +37,3 @@ def write_csv_result(history_frame, save_dir, model_name, suffix=''):
     name = f"{save_dir}/{model_name}{suffix}.csv"
     # df = history_frame(history)
     history_frame.to_csv(name)
-
