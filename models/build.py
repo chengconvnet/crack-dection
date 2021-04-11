@@ -20,6 +20,7 @@ class ModelA(Model):
                       Dense(2)]:
             self.net.add(layer)
 
+    @tf.function
     def call(self, inputs):
         xs = self.base(inputs)
         xs = self.net(xs)
@@ -37,6 +38,7 @@ class ModelB(Model):
         for layer in [Flatten(), Dense(512, activation='relu'), Dense(2)]:
             self.net.add(layer)
 
+    @tf.function
     def call(self, inputs):
         xs = self.base(inputs)
         xs = self.net(xs)
@@ -61,12 +63,14 @@ class ModelC(Model):
         for layer in [Flatten(), Dense(512, activation='relu'), Dense(2)]:
             self.net.add(layer)
 
+    @tf.function
     def call(self, inputs):
         xs = self.base(inputs)
         xs = self.net(xs)
         return xs
 
 
+@tf.function
 def set_resnet(model_class):
     # 建立基网络
     base = ResNet152(include_top=False, weights='imagenet')

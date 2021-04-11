@@ -41,5 +41,23 @@ class PathDataset:
     def images(self):
         return self.paths.map(load_and_preprocess_image)
 
-    def __call__(self):
+    @property
+    def dataset(self):
         return Dataset.zip((self.images, self.labels))
+
+    def __len__(self):
+        return len(self.paths)
+
+    def __call__(self, batch_size, shuffle=False):
+        # 设置一个和数据集大小一致的 shuffle buffer size（随机缓冲区大小）以保证数据
+        # 被充分打乱。
+        if shuffle:
+            n = len(self)
+            ds = self.dataset.shuffle(buffer_size=n)
+        else:
+            ds = self.dataset
+        # ds = ds.repeat()
+        ds = ds.batch(batch_size)
+        # 当模型在训练的时候，`prefetch` 使数据集在后台取得 batch。
+        ds = ds.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+        return ds
